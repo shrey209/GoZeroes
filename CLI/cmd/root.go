@@ -13,20 +13,18 @@ import (
 var port string
 var conn net.Conn
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "Go-Zeroes",
 	Short: "CLI application for Go-Zeroes",
 	Long:  `Go-Zeroes is a CLI tool to connect to a Go-Zeroes server and interact with it.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Establish the connection to the server
+
 		conn = connectToServer()
-		// Start the interactive prompt for commands
+
 		startCommandPrompt(conn)
 	},
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() {
 	rootCmd.Flags().StringVarP(&port, "port", "p", "8769", "Port to connect to the Go-Zeroes server")
 	if err := rootCmd.Execute(); err != nil {
@@ -63,6 +61,11 @@ func startCommandPrompt(conn net.Conn) {
 		}
 
 		tokens := tokenize(cmd)
+		decoded, err := encode(tokens)
+		if err != nil {
+			fmt.Println("invalid command")
+		}
+		fmt.Println(decoded)
 		fmt.Println(tokens)
 
 		// Send the command to the server
