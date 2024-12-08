@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"net"
 	"os"
@@ -78,12 +79,31 @@ func main() {
 				slog.Info("new connection accepted", "address", conn.RemoteAddr().String())
 			} else {
 
-				//reading will be done here so u can create functions here
-
 				buffer := make([]byte, 1024)
 				n, err := unix.Read(fd, buffer)
 				if err != nil || n == 0 {
 					slog.Info("connection closed or read error", "fd", fd)
+					unix.Close(fd)
+					continue
+				}
+				//tokens
+				str := string(buffer[:n])
+				token, err := ParseRESP(str)
+				if err != nil {
+					slog.Error("error parsing")
+				}
+				//execution
+				fmt.Println(token)
+				response, err := handleCommand(token)
+				if err != nil {
+					slog.Error("error in handling")
+
+				}
+
+				data := []byte(response)
+				_, err = unix.Write(fd, data)
+				if err != nil {
+					slog.Error("error writing to fd", "fd", fd, "err", err)
 					unix.Close(fd)
 					continue
 				}
