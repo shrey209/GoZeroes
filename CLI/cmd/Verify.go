@@ -39,6 +39,16 @@ func encode(tokens []string) (string, error) {
 			return "", errors.New("DEL commands requires only a key")
 		}
 		command.Key = tokens[1]
+	case "INCR":
+		if len(tokens) != 2 {
+			return "", errors.New("INCR command only requires a key")
+		}
+		command.Key = tokens[1]
+	case "DECR":
+		if len(tokens) != 2 {
+			return "", errors.New("DECR command only requires a key")
+		}
+		command.Key = tokens[1]
 	default:
 		return "", errors.New("unsupported command: " + tokens[0])
 	}
@@ -63,6 +73,10 @@ func encoder(command *Command) (string, error) {
 		out.WriteString(fmt.Sprintf("*2\r\n$3\r\nGET\r\n$%d\r\n%s\r\n", len(command.Key), command.Key))
 	case "DEL":
 		out.WriteString(fmt.Sprintf("*2\r\n$3\r\nDEL\r\n$%d\r\n%s\r\n", len(command.Key), command.Key))
+	case "INCR":
+		out.WriteString(fmt.Sprintf("*2\r\n$4\r\nINCR\r\n$%d\r\n%s\r\n", len(command.Key), command.Key))
+	case "DECR":
+		out.WriteString(fmt.Sprintf("*2\r\n$4\r\nDECR\r\n$%d\r\n%s\r\n", len(command.Key), command.Key))
 	default:
 		return "", errors.New("unsupported command: " + command.Type)
 	}

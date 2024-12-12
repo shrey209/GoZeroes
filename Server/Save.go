@@ -85,6 +85,38 @@ func handleCommand(tokens []string) (string, error) {
 		key := tokens[1]
 		delete(store, key)
 		response = "+OK"
+	case "INCR":
+		if len(tokens) != 2 {
+			return "", errors.New("INCR command requires a key only")
+		}
+		key := tokens[1]
+		val, exists := store[key]
+		if !exists {
+			return "", errors.New("No such key exists")
+		}
+		tempVal, err := strconv.Atoi(val)
+		if err != nil {
+			return "", errors.New("the value of the key is not an integer")
+		}
+		tempVal++
+		store[key] = strconv.Itoa(tempVal)
+		response = "+OK"
+	case "DECR":
+		if len(tokens) != 2 {
+			return "", errors.New("DECR command requires a key only")
+		}
+		key := tokens[1]
+		val, exists := store[key]
+		if !exists {
+			return "", errors.New("No such key exists")
+		}
+		tempVal, err := strconv.Atoi(val)
+		if err != nil {
+			return "", errors.New("the value of the key is not an integer")
+		}
+		tempVal--
+		store[key] = strconv.Itoa(tempVal)
+		response = "+OK"
 	default:
 		return "", errors.New("unsupported command: " + command)
 	}
