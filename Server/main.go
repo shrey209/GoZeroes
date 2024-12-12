@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"net"
 	"os"
@@ -77,9 +78,7 @@ func main() {
 				}
 				slog.Info("new connection accepted", "address", conn.RemoteAddr().String())
 			} else {
-
-				//reading will be done here so u can create functions here
-
+				//read
 				buffer := make([]byte, 1024)
 				n, err := unix.Read(fd, buffer)
 				if err != nil || n == 0 {
@@ -87,9 +86,44 @@ func main() {
 					unix.Close(fd)
 					continue
 				}
+				//tokens
+				str := string(buffer[:n])
+				token, err := ParseRESP(str)
+				if err != nil {
+					slog.Error("error parsing")
+					data := []byte("ERR" + err.Error())
+					writeToConnection(data, fd)
+					unix.Close(fd)
+				}
+				//execution
+				fmt.Println(token)
+				response, err := handleCommand(token)
+				if err != nil {
+					slog.Error("error in executing")
+					data := []byte("ERR" + err.Error())
+					writeToConnection(data, fd)
+					unix.Close(fd)
+				}
 
-				slog.Info("received data", "data", string(buffer[:n]))
+				data := []byte(response)
+				writeToConnection(data, fd)
 			}
 		}
 	}
+}
+
+func writeToConnection(data []byte, fd int) error {
+	totalWritten := 0
+
+	for totalWritten < len(data) {
+		n, err := unix.Write(fd, data[totalWritten:])
+		if err != nil {
+			slog.Error("Failed to write data to connection", "file_descriptor", fd, "error", err)
+			unix.Close(fd)
+			return err
+		}
+		totalWritten += n
+	}
+
+	return nil
 }
