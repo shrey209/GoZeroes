@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -49,6 +50,26 @@ func encode(tokens []string) (string, error) {
 			return "", errors.New("DECR command only requires a key")
 		}
 		command.Key = tokens[1]
+	case "INCRBY":
+		if len(tokens) != 3 {
+			return "", errors.New("INCRBY command requires :- INCRBY KEY COUNTER")
+		}
+		_, err := strconv.Atoi(tokens[2])
+		if err != nil {
+			return "", errors.New("the counter must be integer")
+		}
+		command.Key = tokens[1]
+		command.Value = tokens[2]
+	case "DECRBY":
+		if len(tokens) != 3 {
+			return "", errors.New("DECRBY command requires :- DECRBY KEY COUNTER")
+		}
+		_, err := strconv.Atoi(tokens[2])
+		if err != nil {
+			return "", errors.New("the counter must be integer")
+		}
+		command.Key = tokens[1]
+		command.Value = tokens[2]
 	default:
 		return "", errors.New("unsupported command: " + tokens[0])
 	}
@@ -60,7 +81,7 @@ func encoder(command *Command) (string, error) {
 	var out strings.Builder
 
 	if command.Key == "" {
-		return "", errors.New("key cannot be empty")
+		return "", errors.New("key cannot be empty" + command.Key)
 	}
 
 	switch command.Type {
@@ -77,6 +98,10 @@ func encoder(command *Command) (string, error) {
 		out.WriteString(fmt.Sprintf("*2\r\n$4\r\nINCR\r\n$%d\r\n%s\r\n", len(command.Key), command.Key))
 	case "DECR":
 		out.WriteString(fmt.Sprintf("*2\r\n$4\r\nDECR\r\n$%d\r\n%s\r\n", len(command.Key), command.Key))
+	case "DECRBY":
+		out.WriteString(fmt.Sprintf("*3\r\n$6\r\nDECRBY\r\n$%d\r\n%s\r\n$%d\r\n%s\r\n", len(command.Key), command.Key, len(command.Value), command.Value))
+	case "INCRBY":
+		out.WriteString(fmt.Sprintf("*3\r\n$6\r\nINCRBY\r\n$%d\r\n%s\r\n$%d\r\n%s\r\n", len(command.Key), command.Key, len(command.Value), command.Value))
 	default:
 		return "", errors.New("unsupported command: " + command.Type)
 	}
