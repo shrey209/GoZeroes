@@ -2,55 +2,58 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
-	"time"
 )
 
 type Node struct {
-	value   int
-	forward []*Node
+	value    int
+	member   string
+	forward  []*Node
+	backward *Node
 }
 
 type SkipList struct {
-	Members  map[string]*Node
 	maxLevel int
 	curLevel int
 	head     *Node
+	members  map[string]*Node
+	tail     *Node
 }
 
-func NewNode(value, level int) *Node {
+func NewNode(value int, member string, level int) *Node {
 	return &Node{
-		value:   value,
-		forward: make([]*Node, level),
+		value:    value,
+		member:   member,
+		forward:  make([]*Node, level),
+		backward: nil,
 	}
 }
 
 func NewSkipList(maxLevel int) *SkipList {
-	head := NewNode(-1, maxLevel)
+	head := NewNode(-1, "head", maxLevel)
 	return &SkipList{
-		Members:  make(map[string]*Node),
 		maxLevel: maxLevel,
 		curLevel: 0,
 		head:     head,
+		members:  make(map[string]*Node),
+		tail:     head,
 	}
 }
 
 func (sl *SkipList) generateMaxLevel() int {
 	level := 1
-	for rand.Float32() < 0.5 && level < sl.maxLevel {
+	for rand.Intn(2) == 1 && level < sl.maxLevel {
 		level++
 	}
 	return level
 }
 
 func (sl *SkipList) Insert(value int, key string) {
-
-	_, exists := sl.Members[key]
-	if exists {
+	if _, exists := sl.members[key]; exists {
 		sl.Delete(key)
 	}
 
+	n1 := NewNode(value, key, sl.generateMaxLevel())
 	update := make([]*Node, sl.maxLevel)
 	current := sl.head
 
@@ -61,88 +64,139 @@ func (sl *SkipList) Insert(value int, key string) {
 		update[i] = current
 	}
 
-	level := sl.generateMaxLevel()
-
-	if level > sl.curLevel {
-		for i := sl.curLevel; i < level; i++ {
+	if len(n1.forward) > sl.curLevel {
+		for i := sl.curLevel; i < len(n1.forward); i++ {
 			update[i] = sl.head
 		}
-		sl.curLevel = level
+		sl.curLevel = len(n1.forward)
 	}
 
-	newNode := NewNode(value, level)
-
-	for i := 0; i < level; i++ {
-		newNode.forward[i] = update[i].forward[i]
-		update[i].forward[i] = newNode
+	for i := 0; i < len(n1.forward); i++ {
+		n1.forward[i] = update[i].forward[i]
+		update[i].forward[i] = n1
 	}
-	sl.Members[key] = newNode
+
+	n1.backward = update[0]
+	if n1.forward[0] != nil {
+		n1.forward[0].backward = n1
+	}
+
+	if n1.forward[0] == nil {
+		sl.tail = n1
+	}
+
+	sl.members[key] = n1
 }
-
 func (sl *SkipList) Delete(key string) {
-	// Check if the key exists
-	nodeToDelete, exists := sl.Members[key]
+	node, exists := sl.members[key]
 	if !exists {
-		log.Println("Key does not exist")
+		fmt.Println("No such key exists")
 		return
 	}
 
-	// Traverse the skip list to update forward pointers
+	value := node.value
+	update := make([]*Node, sl.maxLevel)
 	current := sl.head
+
 	for i := sl.curLevel - 1; i >= 0; i-- {
-		for current.forward[i] != nil && current.forward[i] != nodeToDelete {
+		for current.forward[i] != nil && (current.forward[i].value < value || (current.forward[i].value == value && current.forward[i].member != key)) {
 			current = current.forward[i]
 		}
+		update[i] = current
+	}
 
-		// If the forward pointer points to the node to delete, update it
-		if current.forward[i] == nodeToDelete {
-			current.forward[i] = nodeToDelete.forward[i]
+	target := current.forward[0]
+	if target != nil && target.value == value && target.member == key {
+		for i := 0; i < len(target.forward); i++ {
+			if update[i].forward[i] == target {
+				update[i].forward[i] = target.forward[i]
+			}
 		}
-	}
 
-	// Adjust current level if the top levels become empty
-	for sl.curLevel > 0 && sl.head.forward[sl.curLevel-1] == nil {
-		sl.curLevel--
+		if target.forward[0] != nil {
+			target.forward[0].backward = target.backward
+		} else {
+			sl.tail = target.backward
+		}
+		for sl.curLevel > 0 && sl.head.forward[sl.curLevel-1] == nil {
+			sl.curLevel--
+		}
+		delete(sl.members, key)
 	}
-
-	// Remove the node from the Members map
-	delete(sl.Members, key)
 }
 
-func (sl *SkipList) Display() {
+func (sl *SkipList) DisplayAll() {
 	fmt.Println("Skip List:")
-	for i := sl.curLevel - 1; i >= 0; i-- {
-		fmt.Printf("Level %d: ", i)
+	for lvl := sl.curLevel - 1; lvl >= 0; lvl-- {
 		current := sl.head
-		for current.forward[i] != nil {
-			fmt.Printf("%d ", current.forward[i].value)
-			current = current.forward[i]
+		fmt.Printf("Level %d: ", lvl)
+		for current.forward[lvl] != nil {
+			current = current.forward[lvl]
+			fmt.Printf("%d ", current.value)
 		}
 		fmt.Println()
 	}
 }
 
-func main() {
-	rand.Seed(time.Now().UnixNano())
+func (sl *SkipList) DisplayForward() {
+	fmt.Println("Displat forward ->")
+	cur := sl.head
+	for cur != nil {
+		fmt.Printf("%d ", cur.value)
+		cur = cur.forward[0]
+	}
+	fmt.Println()
+}
 
+func (sl *SkipList) DisplayReverse() {
+	fmt.Println("Reverse ->")
+	cur := sl.tail
+	for cur != nil {
+		fmt.Printf("%d ", cur.value)
+		cur = cur.backward
+	}
+	fmt.Println()
+}
+
+func (sl *SkipList) DisplayForwardN(n int) {
+	fmt.Println("Display forward ->")
+	cur := sl.head
+	for cur != nil && n > 0 {
+		fmt.Printf("%d ", cur.value)
+		cur = cur.forward[0]
+		n--
+	}
+	fmt.Println()
+}
+
+func (sl *SkipList) DisplayReverseN(n int) {
+	fmt.Println("Reverse ->")
+	cur := sl.tail
+	for cur != nil && n > 0 {
+		fmt.Printf("%d ", cur.value)
+		cur = cur.backward
+		n--
+	}
+	fmt.Println()
+}
+
+func main() {
 	skipList := NewSkipList(5)
-	skipList.Insert(100, "one")
-	skipList.Insert(200, "two")
-	skipList.Insert(10, "three")
+
+	skipList.Insert(1, "one")
+	skipList.Insert(2, "two")
+	skipList.Insert(7, "seven")
 	skipList.Insert(4, "four")
 	skipList.Insert(5, "five")
 
 	fmt.Println("Before deletion:")
-	skipList.Display()
+	skipList.DisplayAll()
 
-	skipList.Delete("three")
-	skipList.Delete("four")
+	skipList.Delete("one")
+	skipList.Delete("seven")
 
 	fmt.Println("After deletion:")
-	skipList.Display()
-
-	for key, value := range skipList.Members {
-		fmt.Printf("key: %s, value: %d\n", key, value.value)
-	}
-
+	skipList.DisplayAll()
+	skipList.DisplayReverse()
+	skipList.DisplayForward()
 }
