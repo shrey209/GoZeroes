@@ -6,10 +6,16 @@ import (
 )
 
 type Node struct {
+
 	value    int
 	member   string
 	forward  []*Node
 	backward *Node
+
+	value   int
+	member  string
+	forward []*Node
+
 }
 
 type SkipList struct {
@@ -17,19 +23,28 @@ type SkipList struct {
 	curLevel int
 	head     *Node
 	members  map[string]*Node
+
 	tail     *Node
+
 }
 
 func NewNode(value int, member string, level int) *Node {
 	return &Node{
+
 		value:    value,
 		member:   member,
 		forward:  make([]*Node, level),
 		backward: nil,
+
+		value:   value,
+		member:  member,
+		forward: make([]*Node, level),
+
 	}
 }
 
 func NewSkipList(maxLevel int) *SkipList {
+
 	head := NewNode(-1, "head", maxLevel)
 	return &SkipList{
 		maxLevel: maxLevel,
@@ -37,6 +52,13 @@ func NewSkipList(maxLevel int) *SkipList {
 		head:     head,
 		members:  make(map[string]*Node),
 		tail:     head,
+
+	return &SkipList{
+		maxLevel: maxLevel,
+		curLevel: 0,
+		head:     NewNode(-1, "head", maxLevel),
+		members:  make(map[string]*Node),
+
 	}
 }
 
@@ -72,6 +94,7 @@ func (sl *SkipList) Insert(value int, key string) {
 	}
 
 	for i := 0; i < len(n1.forward); i++ {
+
 		n1.forward[i] = update[i].forward[i]
 		update[i].forward[i] = n1
 	}
@@ -80,6 +103,16 @@ func (sl *SkipList) Insert(value int, key string) {
 	if n1.forward[0] != nil {
 		n1.forward[0].backward = n1
 	}
+
+		if update[i].forward[i] != nil {
+			n1.forward[i] = update[i].forward[i]
+		}
+		update[i].forward[i] = n1
+	}
+
+	sl.members[key] = n1
+}
+
 
 	if n1.forward[0] == nil {
 		sl.tail = n1
@@ -105,6 +138,7 @@ func (sl *SkipList) Delete(key string) {
 		update[i] = current
 	}
 
+
 	target := current.forward[0]
 	if target != nil && target.value == value && target.member == key {
 		for i := 0; i < len(target.forward); i++ {
@@ -117,6 +151,14 @@ func (sl *SkipList) Delete(key string) {
 			target.forward[0].backward = target.backward
 		} else {
 			sl.tail = target.backward
+
+	target := current.forward[0]
+	if target != nil && target.value == value && target.member == key {
+		for i := 0; i < len(target.forward); i++ {
+			if update[i].forward[i] == target {
+				update[i].forward[i] = target.forward[i]
+			}
+
 		}
 		for sl.curLevel > 0 && sl.head.forward[sl.curLevel-1] == nil {
 			sl.curLevel--
@@ -137,6 +179,7 @@ func (sl *SkipList) DisplayAll() {
 		fmt.Println()
 	}
 }
+
 
 func (sl *SkipList) DisplayForward() {
 	fmt.Println("Displat forward ->")
@@ -180,6 +223,7 @@ func (sl *SkipList) DisplayReverseN(n int) {
 	fmt.Println()
 }
 
+
 func main() {
 	skipList := NewSkipList(5)
 
@@ -196,7 +240,11 @@ func main() {
 	skipList.Delete("seven")
 
 	fmt.Println("After deletion:")
+
 	skipList.DisplayAll()
 	skipList.DisplayReverse()
 	skipList.DisplayForward()
+
+	skipList.Display()
+
 }
